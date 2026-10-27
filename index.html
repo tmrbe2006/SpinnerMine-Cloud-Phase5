@@ -1,0 +1,162 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <script>
+      (function() {
+        try {
+          if (typeof window !== 'undefined') {
+            // Gracefully handle Vite HMR WebSocket in AI Studio iframe/proxy environment
+            var OrigWebSocket = window.WebSocket;
+            if (OrigWebSocket) {
+              window.WebSocket = function(url, protocols) {
+                var isViteHmr = false;
+                if (protocols === 'vite-hmr' || (Array.isArray(protocols) && protocols.indexOf('vite-hmr') !== -1)) {
+                  isViteHmr = true;
+                } else if (typeof url === 'string' && (url.indexOf('vite-hmr') !== -1 || (protocols === undefined && url.indexOf('/@vite/client') !== -1))) {
+                  isViteHmr = true;
+                }
+
+                if (isViteHmr) {
+                  var listeners = {};
+                  var dummy = {
+                    binaryType: 'blob',
+                    bufferedAmount: 0,
+                    extensions: '',
+                    protocol: 'vite-hmr',
+                    readyState: 1, // WebSocket.OPEN
+                    url: url,
+                    onopen: null,
+                    onmessage: null,
+                    onerror: null,
+                    onclose: null,
+                    addEventListener: function(type, listener) {
+                      listeners[type] = listeners[type] || [];
+                      listeners[type].push(listener);
+                    },
+                    removeEventListener: function(type, listener) {
+                      if (listeners[type]) {
+                        listeners[type] = listeners[type].filter(function(l) { return l !== listener; });
+                      }
+                    },
+                    dispatchEvent: function(event) {
+                      var list = listeners[event.type] || [];
+                      for (var i = 0; i < list.length; i++) {
+                        try { list[i].call(dummy, event); } catch(err) {}
+                      }
+                      return true;
+                    },
+                    send: function() {},
+                    close: function() {
+                      dummy.readyState = 3;
+                    }
+                  };
+
+                  setTimeout(function() {
+                    try {
+                      if (typeof dummy.onopen === 'function') {
+                        dummy.onopen(new Event('open'));
+                      }
+                      dummy.dispatchEvent(new Event('open'));
+                    } catch(e) {}
+                  }, 10);
+
+                  return dummy;
+                }
+
+                return protocols !== undefined ? new OrigWebSocket(url, protocols) : new OrigWebSocket(url);
+              };
+
+              window.WebSocket.CONNECTING = OrigWebSocket.CONNECTING;
+              window.WebSocket.OPEN = OrigWebSocket.OPEN;
+              window.WebSocket.CLOSING = OrigWebSocket.CLOSING;
+              window.WebSocket.CLOSED = OrigWebSocket.CLOSED;
+              window.WebSocket.prototype = OrigWebSocket.prototype;
+            }
+
+            // Suppress benign Vite HMR WebSocket connection logs & errors in AI Studio iframe/proxy environment
+            var origConsoleError = console.error;
+            console.error = function() {
+              var arg0 = arguments[0];
+              var msg = (arg0 && (arg0.message || arg0.toString())) || '';
+              if (
+                msg.indexOf('WebSocket') !== -1 ||
+                msg.indexOf('websocket') !== -1 ||
+                (msg.indexOf('[vite]') !== -1 && (msg.indexOf('connect') !== -1 || msg.indexOf('server connection lost') !== -1))
+              ) {
+                return;
+              }
+              origConsoleError.apply(console, arguments);
+            };
+
+            window.addEventListener('unhandledrejection', function(event) {
+              var r = event && event.reason;
+              var msg = (r && (r.message || r.toString())) || '';
+              if (msg.indexOf('WebSocket') !== -1 || msg.indexOf('websocket') !== -1) {
+                event.preventDefault();
+                event.stopImmediatePropagation();
+              }
+            }, true);
+
+            window.addEventListener('error', function(event) {
+              var msg = (event && (event.message || (event.error && event.error.message))) || '';
+              if (msg.indexOf('WebSocket') !== -1 || msg.indexOf('websocket') !== -1) {
+                event.preventDefault();
+                event.stopImmediatePropagation();
+                return true;
+              }
+            }, true);
+
+            // Safeguard window.fetch against Chrome extension attempts to overwrite read-only getter
+            var orig = typeof window.fetch === 'function' ? window.fetch.bind(window) : window.fetch;
+            var curr = orig;
+            var d = Object.getOwnPropertyDescriptor(window, 'fetch');
+            if (!d || !d.set) {
+              try {
+                Object.defineProperty(window, 'fetch', {
+                  configurable: true,
+                  enumerable: true,
+                  get: function() { return curr; },
+                  set: function(v) { curr = typeof v === 'function' ? v : curr; }
+                });
+              } catch(e1) {
+                try {
+                  Object.defineProperty(window, 'fetch', {
+                    value: orig,
+                    writable: true,
+                    configurable: true,
+                    enumerable: true
+                  });
+                } catch(e2) {}
+              }
+            }
+          }
+        } catch(e) {}
+      })();
+    </script>
+    <title>SpinnerMine Cloud — Crypto Mining & Interactive Gaming</title>
+    <meta name="description" content="SpinnerMine Cloud is a next-generation cryptocurrency mining and interactive gaming platform with transparent mining controls and wallet management." />
+    <meta property="og:title" content="SpinnerMine Cloud — Crypto Mining & Interactive Gaming" />
+    <meta property="og:description" content="SpinnerMine Cloud is a next-generation cryptocurrency mining and interactive gaming platform with transparent mining controls and wallet management." />
+    <meta property="og:type" content="website" />
+    <meta name="twitter:card" content="summary_large_image" />
+    <meta name="theme-color" content="#0a0f1d" />
+    <meta name="mobile-web-app-capable" content="yes" />
+    <meta name="apple-mobile-web-app-capable" content="yes" />
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
+    <meta name="apple-mobile-web-app-title" content="SpinnerMine" />
+    <link rel="icon" type="image/x-icon" href="./favicon.ico" />
+    <link rel="shortcut icon" href="./favicon.ico" />
+    <link rel="apple-touch-icon" href="./apple-touch-icon.png" />
+    <link rel="icon" type="image/svg+xml" href="./icon.svg" />
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Cairo:wght@400;500;600;700;800&family=Inter:wght@300;400;500;600;700;800&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+  </head>
+  <body>
+    <div id="root"></div>
+    <script type="module" src="./src/main.tsx"></script>
+  </body>
+</html>
+

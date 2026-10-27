@@ -1,0 +1,42 @@
+{
+  "appId": "cloud.spinnermine.desktopminer",
+  "productName": "SpinnerMine Desktop Miner",
+  "copyright": "Copyright © 2026 SpinnerMine Cloud",
+  "directories": {
+    "output": "dist-windows",
+    "buildResources": "build"
+  },
+  "publish": null,
+  "extraMetadata": {
+    "main": "dist-electron/main.cjs"
+  },
+  "win": {
+    "target": [
+      {
+        "target": "nsis",
+        "arch": ["x64"]
+      },
+      {
+        "target": "portable",
+        "arch": ["x64"]
+      }
+    ],
+    "requestedExecutionLevel": "asInvoker"
+  },
+  "nsis": {
+    "oneClick": false,
+    "allowToChangeInstallationDirectory": true,
+    "createDesktopShortcut": true,
+    "createStartMenuShortcut": true,
+    "shortcutName": "SpinnerMine Miner",
+    "artifactName": "${productName}-Setup-${version}.${ext}"
+  },
+  "portable": {
+    "artifactName": "${productName}-Portable-${version}.${ext}"
+  },
+  "files": [
+    "dist-electron/**/*",
+    "dist/**/*",
+    "package.json"
+  ]
+}

@@ -1,0 +1,12 @@
+{
+  "projectId": "spinnermine-cloud-production",
+  "appId": "1:157443993763:web:693be9aa66e7b3c7104f16",
+  "apiKey": "AIzaSyB9Eh0vir23mpO60t42-rjbDL77gdIbG-E",
+  "authDomain": "spinnermine-cloud-production.firebaseapp.com",
+  "firestoreDatabaseId": "(default)",
+  "storageBucket": "spinnermine-cloud-production.firebasestorage.app",
+  "messagingSenderId": "157443993763",
+  "measurementId": "G-W49MT8XT2T",
+  "oAuthClientId": "869251278873-d8nsvjt3ab5i047rjfacnlgii1e0bd0g.apps.googleusercontent.com",
+  "recaptchaSiteKey": ""
+}

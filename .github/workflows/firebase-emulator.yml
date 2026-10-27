@@ -1,0 +1,63 @@
+name: SpinnerMine Cloud CI & Firebase Emulator Suite
+
+on:
+  push:
+    branches: [ main, master ]
+  pull_request:
+    branches: [ main, master ]
+
+jobs:
+  ci-and-emulator:
+    name: Lint, Test, Firebase Emulator & Production Build
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout Repository
+        uses: actions/checkout@v4
+
+      - name: Setup Bun
+        uses: oven-sh/setup-bun@v2
+        with:
+          bun-version: latest
+
+      - name: Setup Node.js 22 (Vite & Firebase Tools compatibility)
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+
+      - name: Setup Java JRE 21 (Strict Requirement for Firebase Emulator Suite)
+        uses: actions/setup-java@v4
+        with:
+          distribution: 'temurin'
+          java-version: '21'
+
+      - name: Install Dependencies with Bun (bun.lock)
+        run: bun install --frozen-lockfile
+
+      - name: Install Firebase CLI
+        run: bun install -g firebase-tools
+
+      - name: Run TypeScript Check
+        run: bun run lint
+
+      - name: Run Core Test Suite
+        run: |
+          export GAME_SERVER_SECRET="${{ secrets.GAME_SERVER_SECRET }}"
+          if [ -z "$GAME_SERVER_SECRET" ]; then
+            export GAME_SERVER_SECRET=$(openssl rand -hex 32)
+          fi
+          bun run test:core
+
+      - name: Run Real Firebase Emulator Suite Tests (Strict Zero-Skip)
+        env:
+          FIREBASE_PROJECT_ID: 'spinnermine-ci-test'
+          CI: 'true'
+        run: |
+          export GAME_SERVER_SECRET="${{ secrets.GAME_SERVER_SECRET }}"
+          if [ -z "$GAME_SERVER_SECRET" ]; then
+            export GAME_SERVER_SECRET=$(openssl rand -hex 32)
+          fi
+          firebase emulators:exec --only firestore,auth --project spinnermine-ci-test "FIRESTORE_EMULATOR_HOST=127.0.0.1:8080 FIREBASE_AUTH_EMULATOR_HOST=127.0.0.1:9099 FIREBASE_PROJECT_ID=spinnermine-ci-test GCLOUD_PROJECT=spinnermine-ci-test GAME_SERVER_SECRET=\$GAME_SERVER_SECRET bun run test:emulator"
+
+      - name: Production Build
+        run: bun run build

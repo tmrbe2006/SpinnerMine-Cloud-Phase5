@@ -1,0 +1,307 @@
+{
+  "entities": {
+    "User": {
+      "title": "User",
+      "description": "User profile with authentication and mining consent information",
+      "type": "object",
+      "properties": {
+        "uid": { "type": "string", "maxLength": 128 },
+        "email": { "type": "string", "maxLength": 256 },
+        "displayName": { "type": "string", "maxLength": 100 },
+        "photoURL": { "type": "string", "maxLength": 500 },
+        "role": { "type": "string", "enum": ["user", "admin"] },
+        "language": { "type": "string", "enum": ["en", "ar"] },
+        "miningConsent": { "type": "boolean" },
+        "consentTimestamp": { "type": "string", "maxLength": 64 },
+        "consentVersion": { "type": "string", "maxLength": 32 },
+        "referralCode": { "type": "string", "maxLength": 32 },
+        "referredBy": { "type": "string", "maxLength": 128 },
+        "createdAt": { "type": "string", "maxLength": 64 },
+        "updatedAt": { "type": "string", "maxLength": 64 }
+      },
+      "required": ["uid", "email", "role"]
+    },
+    "MiningSession": {
+      "title": "MiningSession",
+      "description": "User mining sessions (WebAssembly browser worker or desktop)",
+      "type": "object",
+      "properties": {
+        "sessionId": { "type": "string", "maxLength": 128 },
+        "userId": { "type": "string", "maxLength": 128 },
+        "workerName": { "type": "string", "maxLength": 64 },
+        "workerType": { "type": "string", "enum": ["browser_wasm", "windows_xmrig", "custom"] },
+        "status": { "type": "string", "enum": ["active", "paused", "stopped"] },
+        "hashrate": { "type": "number" },
+        "totalHashes": { "type": "number" },
+        "acceptedShares": { "type": "number" },
+        "rejectedShares": { "type": "number" },
+        "threads": { "type": "number" },
+        "throttle": { "type": "number" },
+        "startedAt": { "type": "string", "maxLength": 64 },
+        "lastHeartbeat": { "type": "string", "maxLength": 64 }
+      },
+      "required": ["sessionId", "userId", "workerName", "workerType", "status"]
+    },
+    "MiningWorker": {
+      "title": "MiningWorker",
+      "description": "Registered mining worker devices for a user",
+      "type": "object",
+      "properties": {
+        "workerId": { "type": "string", "maxLength": 128 },
+        "userId": { "type": "string", "maxLength": 128 },
+        "name": { "type": "string", "maxLength": 64 },
+        "deviceName": { "type": "string", "maxLength": 64 },
+        "platform": { "type": "string", "enum": ["browser", "windows", "linux", "mac"] },
+        "xmrigVersion": { "type": "string", "maxLength": 32 },
+        "status": { "type": "string", "enum": ["online", "offline", "mining", "paused", "error"] },
+        "cpuCores": { "type": "number" },
+        "threads": { "type": "number" },
+        "cpuUsage": { "type": "number" },
+        "reportedHashrate": { "type": "number" },
+        "acceptedShares": { "type": "number" },
+        "rejectedShares": { "type": "number" },
+        "sessionId": { "type": "string", "maxLength": 128 },
+        "lastError": { "type": "string", "maxLength": 500 },
+        "lastSeen": { "type": "string", "maxLength": 64 },
+        "createdAt": { "type": "string", "maxLength": 64 },
+        "updatedAt": { "type": "string", "maxLength": 64 },
+        "installationId": { "type": "string", "maxLength": 128 },
+        "installationLinkedAt": { "type": "string", "maxLength": 64 },
+        "isArchived": { "type": "boolean" },
+        "archivedAt": { "type": "string", "maxLength": 64 },
+        "archiveReason": { "type": "string", "maxLength": 256 },
+        "mergedInto": { "type": "string", "maxLength": 128 },
+        "mergedAt": { "type": "string", "maxLength": 64 }
+      },
+      "required": ["workerId", "userId", "name", "platform", "status"]
+    },
+    "AcceptedShare": {
+      "title": "AcceptedShare",
+      "description": "Pool-verified mining shares attributable to workers",
+      "type": "object",
+      "properties": {
+        "shareId": { "type": "string", "maxLength": 128 },
+        "userId": { "type": "string", "maxLength": 128 },
+        "workerId": { "type": "string", "maxLength": 128 },
+        "difficulty": { "type": "number" },
+        "blockHeight": { "type": "number" },
+        "timestamp": { "type": "string", "maxLength": 64 }
+      },
+      "required": ["shareId", "userId", "workerId", "difficulty", "timestamp"]
+    },
+    "MiningRevenue": {
+      "title": "MiningRevenue",
+      "description": "Platform confirmed block rewards and pool payouts with 80/20 split",
+      "type": "object",
+      "properties": {
+        "revenueId": { "type": "string", "maxLength": 128 },
+        "currency": { "type": "string", "maxLength": 10 },
+        "grossRevenue": { "type": "number" },
+        "platformShare": { "type": "number" },
+        "usersShareTotal": { "type": "number" },
+        "platformSplitRatio": { "type": "number" },
+        "userSplitRatio": { "type": "number" },
+        "blockOrBatchId": { "type": "string", "maxLength": 128 },
+        "timestamp": { "type": "string", "maxLength": 64 }
+      },
+      "required": ["revenueId", "currency", "grossRevenue", "platformShare", "usersShareTotal", "timestamp"]
+    },
+    "UserEarning": {
+      "title": "UserEarning",
+      "description": "Confirmed mining and platform reward earnings accrued to a user",
+      "type": "object",
+      "properties": {
+        "earningId": { "type": "string", "maxLength": 128 },
+        "userId": { "type": "string", "maxLength": 128 },
+        "source": { "type": "string", "enum": ["mining_share", "spinner_bonus", "wheel_bonus", "referral_bonus"] },
+        "currency": { "type": "string", "maxLength": 10 },
+        "amount": { "type": "number" },
+        "revenueBatchId": { "type": "string", "maxLength": 128 },
+        "timestamp": { "type": "string", "maxLength": 64 }
+      },
+      "required": ["earningId", "userId", "source", "currency", "amount", "timestamp"]
+    },
+    "WalletLedger": {
+      "title": "WalletLedger",
+      "description": "Immutable balance ledger records for user cryptocurrency wallets",
+      "type": "object",
+      "properties": {
+        "entryId": { "type": "string", "maxLength": 128 },
+        "userId": { "type": "string", "maxLength": 128 },
+        "type": { "type": "string", "enum": ["credit", "debit"] },
+        "category": { "type": "string", "enum": ["mining", "reward", "game", "withdrawal", "adjustment"] },
+        "currency": { "type": "string", "maxLength": 10 },
+        "amount": { "type": "number" },
+        "balanceAfter": { "type": "number" },
+        "referenceId": { "type": "string", "maxLength": 128 },
+        "timestamp": { "type": "string", "maxLength": 64 }
+      },
+      "required": ["entryId", "userId", "type", "currency", "amount", "timestamp"]
+    },
+    "Withdrawal": {
+      "title": "Withdrawal",
+      "description": "User withdrawal requests and processing status",
+      "type": "object",
+      "properties": {
+        "withdrawalId": { "type": "string", "maxLength": 128 },
+        "userId": { "type": "string", "maxLength": 128 },
+        "currency": { "type": "string", "maxLength": 10 },
+        "amount": { "type": "number" },
+        "fee": { "type": "number" },
+        "destinationAddress": { "type": "string", "maxLength": 256 },
+        "status": { "type": "string", "enum": ["pending", "processing", "completed", "rejected"] },
+        "txHash": { "type": "string", "maxLength": 256 },
+        "requestedAt": { "type": "string", "maxLength": 64 },
+        "processedAt": { "type": "string", "maxLength": 64 },
+        "rejectionReason": { "type": "string", "maxLength": 256 }
+      },
+      "required": ["withdrawalId", "userId", "currency", "amount", "destinationAddress", "status", "requestedAt"]
+    },
+    "SpinnerSession": {
+      "title": "SpinnerSession",
+      "description": "Interactive Spinner game spins and physics sessions",
+      "type": "object",
+      "properties": {
+        "sessionId": { "type": "string", "maxLength": 128 },
+        "userId": { "type": "string", "maxLength": 128 },
+        "spinsCount": { "type": "number" },
+        "topRpm": { "type": "number" },
+        "pointsEarned": { "type": "number" },
+        "spinnerModel": { "type": "string", "maxLength": 64 },
+        "createdAt": { "type": "string", "maxLength": 64 }
+      },
+      "required": ["sessionId", "userId", "spinsCount", "pointsEarned", "createdAt"]
+    },
+    "WheelSpin": {
+      "title": "WheelSpin",
+      "description": "Wheel of fortune spins and reward results",
+      "type": "object",
+      "properties": {
+        "spinId": { "type": "string", "maxLength": 128 },
+        "userId": { "type": "string", "maxLength": 128 },
+        "segmentLanded": { "type": "number" },
+        "rewardType": { "type": "string", "enum": ["bonus_points", "hashrate_boost", "token_voucher", "try_again"] },
+        "rewardValue": { "type": "string", "maxLength": 64 },
+        "claimed": { "type": "boolean" },
+        "timestamp": { "type": "string", "maxLength": 64 }
+      },
+      "required": ["spinId", "userId", "segmentLanded", "rewardType", "claimed", "timestamp"]
+    },
+    "Reward": {
+      "title": "Reward",
+      "description": "Daily login streaks, mission rewards and achievements",
+      "type": "object",
+      "properties": {
+        "rewardId": { "type": "string", "maxLength": 128 },
+        "userId": { "type": "string", "maxLength": 128 },
+        "rewardName": { "type": "string", "maxLength": 100 },
+        "rewardCategory": { "type": "string", "enum": ["daily_streak", "first_mine", "spinner_master", "referral_starter"] },
+        "status": { "type": "string", "enum": ["available", "claimed"] },
+        "value": { "type": "string", "maxLength": 64 },
+        "claimedAt": { "type": "string", "maxLength": 64 }
+      },
+      "required": ["rewardId", "userId", "rewardName", "rewardCategory", "status"]
+    },
+    "Referral": {
+      "title": "Referral",
+      "description": "User referral tracking and relationship mapping",
+      "type": "object",
+      "properties": {
+        "referralId": { "type": "string", "maxLength": 128 },
+        "referrerId": { "type": "string", "maxLength": 128 },
+        "referredUserId": { "type": "string", "maxLength": 128 },
+        "referralCode": { "type": "string", "maxLength": 32 },
+        "bonusEarned": { "type": "number" },
+        "createdAt": { "type": "string", "maxLength": 64 }
+      },
+      "required": ["referralId", "referrerId", "referredUserId", "referralCode", "createdAt"]
+    },
+    "SystemSetting": {
+      "title": "SystemSetting",
+      "description": "Global platform configurations, mining pool parameters, and revenue split ratios",
+      "type": "object",
+      "properties": {
+        "key": { "type": "string", "maxLength": 64 },
+        "value": { "type": "string", "maxLength": 1000 },
+        "category": { "type": "string", "enum": ["mining", "financial", "general", "security"] },
+        "updatedBy": { "type": "string", "maxLength": 128 },
+        "updatedAt": { "type": "string", "maxLength": 64 }
+      },
+      "required": ["key", "value", "category"]
+    },
+    "AuditLog": {
+      "title": "AuditLog",
+      "description": "Administrative actions, security modifications, and configuration changes",
+      "type": "object",
+      "properties": {
+        "logId": { "type": "string", "maxLength": 128 },
+        "actorId": { "type": "string", "maxLength": 128 },
+        "actorEmail": { "type": "string", "maxLength": 256 },
+        "action": { "type": "string", "maxLength": 64 },
+        "resource": { "type": "string", "maxLength": 128 },
+        "details": { "type": "string", "maxLength": 1000 },
+        "ipAddress": { "type": "string", "maxLength": 64 },
+        "timestamp": { "type": "string", "maxLength": 64 }
+      },
+      "required": ["logId", "actorId", "action", "resource", "timestamp"]
+    }
+  },
+  "firestore": {
+    "/users/{userId}": {
+      "schema": "User",
+      "description": "User account documents and profile metadata"
+    },
+    "/miningSessions/{sessionId}": {
+      "schema": "MiningSession",
+      "description": "Mining worker sessions created by authenticated users"
+    },
+    "/miningWorkers/{workerId}": {
+      "schema": "MiningWorker",
+      "description": "Registered mining hardware and browser workers"
+    },
+    "/acceptedShares/{shareId}": {
+      "schema": "AcceptedShare",
+      "description": "Pool verified shares attributable to mining workers"
+    },
+    "/miningRevenue/{revenueId}": {
+      "schema": "MiningRevenue",
+      "description": "Platform confirmed mining revenue blocks and 80/20 split"
+    },
+    "/userEarnings/{earningId}": {
+      "schema": "UserEarning",
+      "description": "Confirmed user earnings from attributable shares and bonuses"
+    },
+    "/walletLedger/{entryId}": {
+      "schema": "WalletLedger",
+      "description": "Immutable balance ledger records for user wallets"
+    },
+    "/withdrawals/{withdrawalId}": {
+      "schema": "Withdrawal",
+      "description": "Cryptocurrency withdrawal requests and status"
+    },
+    "/spinnerSessions/{sessionId}": {
+      "schema": "SpinnerSession",
+      "description": "Interactive Spinner game session data"
+    },
+    "/wheelSpins/{spinId}": {
+      "schema": "WheelSpin",
+      "description": "Wheel of Fortune spin history and claims"
+    },
+    "/rewards/{rewardId}": {
+      "schema": "Reward",
+      "description": "User mission rewards and streak records"
+    },
+    "/referrals/{referralId}": {
+      "schema": "Referral",
+      "description": "Referral tracking relationships"
+    },
+    "/systemSettings/{settingId}": {
+      "schema": "SystemSetting",
+      "description": "Platform administrative configuration and mining pool settings"
+    },
+    "/auditLogs/{logId}": {
+      "schema": "AuditLog",
+      "description": "Administrative actions and audit trail"
+    }
+  }
+}

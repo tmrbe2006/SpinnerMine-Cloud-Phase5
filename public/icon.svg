@@ -1,0 +1,69 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512" width="512" height="512">
+  <defs>
+    <radialGradient id="bgGlow" cx="50%" cy="50%" r="50%">
+      <stop offset="0%" stop-color="#0e1e38" />
+      <stop offset="100%" stop-color="#050a14" />
+    </radialGradient>
+    <linearGradient id="bladeGrad1" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#38bdf8" />
+      <stop offset="100%" stop-color="#0284c7" />
+    </linearGradient>
+    <linearGradient id="bladeGrad2" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#34d399" />
+      <stop offset="100%" stop-color="#059669" />
+    </linearGradient>
+    <linearGradient id="goldGrad" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#fde047" />
+      <stop offset="50%" stop-color="#eab308" />
+      <stop offset="100%" stop-color="#b45309" />
+    </linearGradient>
+    <linearGradient id="coreGrad" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#1e293b" />
+      <stop offset="100%" stop-color="#0f172a" />
+    </linearGradient>
+    <filter id="neonGlow" x="-30%" y="-30%" width="160%" height="160%">
+      <feGaussianBlur stdDeviation="12" result="blur" />
+      <feComposite in="SourceGraphic" in2="blur" operator="over" />
+    </filter>
+  </defs>
+
+  <!-- Background Base -->
+  <rect width="512" height="512" rx="104" fill="url(#bgGlow)" />
+  <circle cx="256" cy="256" r="236" fill="none" stroke="#1e293b" stroke-width="3" stroke-dasharray="8 8" />
+
+  <!-- Spinner Rotor Assembly -->
+  <g id="spinnerRotor" filter="url(#neonGlow)">
+    <!-- Arm 1: Top (Angle 0 deg) -->
+    <g transform="translate(256, 256) rotate(0)">
+      <path d="M -32,0 L -24,-130 C -24,-170 24,-170 24,-130 L 32,0 Z" fill="url(#bladeGrad1)" />
+      <circle cx="0" cy="-136" r="44" fill="#0c4a6e" stroke="#38bdf8" stroke-width="6" />
+      <circle cx="0" cy="-136" r="20" fill="url(#goldGrad)" />
+      <circle cx="0" cy="-136" r="8" fill="#0f172a" />
+    </g>
+
+    <!-- Arm 2: Bottom-Right (Angle 120 deg) -->
+    <g transform="translate(256, 256) rotate(120)">
+      <path d="M -32,0 L -24,-130 C -24,-170 24,-170 24,-130 L 32,0 Z" fill="url(#bladeGrad1)" />
+      <circle cx="0" cy="-136" r="44" fill="#0c4a6e" stroke="#38bdf8" stroke-width="6" />
+      <circle cx="0" cy="-136" r="20" fill="url(#goldGrad)" />
+      <circle cx="0" cy="-136" r="8" fill="#0f172a" />
+    </g>
+
+    <!-- Arm 3: Bottom-Left (Angle 240 deg) -->
+    <g transform="translate(256, 256) rotate(240)">
+      <path d="M -32,0 L -24,-130 C -24,-170 24,-170 24,-130 L 32,0 Z" fill="url(#bladeGrad1)" />
+      <circle cx="0" cy="-136" r="44" fill="#0c4a6e" stroke="#38bdf8" stroke-width="6" />
+      <circle cx="0" cy="-136" r="20" fill="url(#goldGrad)" />
+      <circle cx="0" cy="-136" r="8" fill="#0f172a" />
+    </g>
+
+    <!-- Center Hub & Precision Bearing -->
+    <circle cx="256" cy="256" r="64" fill="url(#coreGrad)" stroke="url(#goldGrad)" stroke-width="6" />
+    <circle cx="256" cy="256" r="44" fill="#0369a1" opacity="0.3" />
+
+    <!-- Center Crypto / Mining Pick Emblem -->
+    <path d="M 234,266 L 256,236 L 278,266 L 256,276 Z" fill="url(#goldGrad)" />
+    <path d="M 246,242 L 256,220 L 266,242 Z" fill="#38bdf8" />
+    <circle cx="256" cy="256" r="6" fill="#ffffff" />
+  </g>
+</svg>

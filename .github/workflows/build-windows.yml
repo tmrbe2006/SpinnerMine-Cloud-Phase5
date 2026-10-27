@@ -1,0 +1,164 @@
+name: Build Windows Desktop Miner
+
+on:
+  push:
+    branches: [ main, master ]
+    paths:
+      - 'src/**'
+      - 'desktop/**'
+      - 'public/**'
+      - 'scripts/**'
+      - '.github/workflows/build-windows.yml'
+      - 'firebase-applet-config.json'
+      - 'package.json'
+      - 'vite.config.ts'
+  pull_request:
+    branches: [ main, master ]
+    paths:
+      - 'src/**'
+      - 'desktop/**'
+      - 'public/**'
+      - 'scripts/**'
+      - '.github/workflows/build-windows.yml'
+      - 'firebase-applet-config.json'
+      - 'package.json'
+      - 'vite.config.ts'
+  workflow_dispatch:
+
+jobs:
+  build-windows-client:
+    name: Package Windows Desktop XMRig Client (x64)
+    runs-on: windows-latest
+
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v4
+
+      - name: Setup Bun (bun.lock compatibility)
+        uses: oven-sh/setup-bun@v2
+        with:
+          bun-version: latest
+
+      - name: Setup Node.js 22 (Without conflicting npm cache)
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+
+      - name: Install Root Dependencies (bun.lock)
+        shell: bash
+        run: |
+          bun install --frozen-lockfile || bun install
+
+      - name: Build Web Application for Electron (Relative Base & No SW)
+        shell: bash
+        run: bun run build:electron-web
+
+      - name: Compile Electron Main & Preload Process
+        shell: bash
+        run: bun run build:electron
+
+      - name: Strict Pre-Package Asset & Link Validation (file:// Compatibility Gate)
+        shell: bash
+        run: bun run validate:electron-dist
+
+      - name: Prepare Windows Build Assets
+        shell: bash
+        run: |
+          mkdir -p build
+          cp public/pwa-512x512.png build/icon.png
+
+      - name: Package Windows Installer & Portable Binary (Electron Builder)
+        shell: bash
+        run: |
+          node ./node_modules/electron-builder/out/cli/cli.js --win --x64 -c desktop/electron-builder.json5 -p never
+
+      - name: Verify Windows Executable Produced (Strict Gate)
+        shell: pwsh
+        run: |
+          $exeFiles = Get-ChildItem -Path dist-windows/*.exe -ErrorAction SilentlyContinue
+          if (-not $exeFiles -or $exeFiles.Count -eq 0) {
+            Write-Error "FATAL GATE FAILURE: No Windows EXE binary was produced in dist-windows!"
+            exit 1
+          }
+          Write-Host "SUCCESS: Windows executable(s) successfully verified:" -ForegroundColor Green
+          $exeFiles | ForEach-Object {
+            Write-Host " - $($_.Name) ($([math]::Round($_.Length / 1MB, 2)) MB)" -ForegroundColor Cyan
+          }
+
+      - name: Windows Runtime Packaged Smoke Test (--smoke-test)
+        shell: pwsh
+        run: |
+          Write-Host "==========================================================" -ForegroundColor Cyan
+          Write-Host "STARTING PACKAGED ELECTRON RUNTIME SMOKE TEST" -ForegroundColor Cyan
+          Write-Host "==========================================================" -ForegroundColor Cyan
+
+          $unpackedExe = "dist-windows\win-unpacked\SpinnerMine Desktop Miner.exe"
+          $portableExe = Get-ChildItem -Path dist-windows -Filter "*Portable*.exe" | Select-Object -First 1 -ExpandProperty FullName
+
+          $targetExe = $null
+          if (Test-Path $unpackedExe) {
+            $targetExe = (Resolve-Path $unpackedExe).Path
+            Write-Host "Testing unpacked packaged binary: $targetExe" -ForegroundColor Green
+          } elseif ($portableExe -and (Test-Path $portableExe)) {
+            $targetExe = (Resolve-Path $portableExe).Path
+            Write-Host "Testing portable packaged binary: $targetExe" -ForegroundColor Green
+          } else {
+            Write-Error "No packaged Windows executable found to smoke test!"
+            exit 1
+          }
+
+          $pinfo = New-Object System.Diagnostics.ProcessStartInfo
+          $pinfo.FileName = $targetExe
+          $pinfo.Arguments = "--smoke-test --no-sandbox --disable-gpu"
+          $pinfo.RedirectStandardOutput = $true
+          $pinfo.RedirectStandardError = $true
+          $pinfo.UseShellExecute = $false
+          $pinfo.CreateNoWindow = $true
+
+          $process = New-Object System.Diagnostics.Process
+          $process.StartInfo = $pinfo
+
+          [void]$process.Start()
+          $stdoutTask = $process.StandardOutput.ReadToEndAsync()
+          $stderrTask = $process.StandardError.ReadToEndAsync()
+
+          $exited = $process.WaitForExit(35000) # 35s maximum timeout
+
+          if (-not $exited) {
+            Write-Error "CRITICAL: Packaged smoke test timed out after 35 seconds! Terminating process..."
+            try { $process.Kill() } catch {}
+            exit 1
+          }
+
+          $stdout = $stdoutTask.Result
+          $stderr = $stderrTask.Result
+
+          if ($stdout) {
+            Write-Host "--- PROCESS STDOUT ---" -ForegroundColor Gray
+            Write-Host $stdout
+          }
+          if ($stderr) {
+            Write-Host "--- PROCESS STDERR ---" -ForegroundColor Yellow
+            Write-Host $stderr
+          }
+
+          # Cleanup any orphaned processes
+          Get-Process -Name "SpinnerMine*", "xmrig*" -ErrorAction SilentlyContinue | Stop-Process -Force -ErrorAction SilentlyContinue
+
+          if ($process.ExitCode -ne 0) {
+            Write-Error "CRITICAL: Packaged Electron runtime smoke test failed with exit code $($process.ExitCode)!"
+            exit 1
+          }
+
+          Write-Host "==========================================================" -ForegroundColor Green
+          Write-Host "SUCCESS: Packaged Electron smoke test passed with exit code 0!" -ForegroundColor Green
+          Write-Host "==========================================================" -ForegroundColor Green
+
+      - name: Archive Windows Artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: spinnermine-windows-desktop-miner
+          path: |
+            dist-windows/*.exe
+            dist-windows/*.blockmap
+          retention-days: 14

@@ -1,0 +1,238 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+    
+    // Default-deny all unmapped operations
+    match /{document=**} {
+      allow read, write: if false;
+    }
+
+    function isSignedIn() {
+      return request.auth != null;
+    }
+
+    function isOwner(userId) {
+      return isSignedIn() && request.auth.uid == userId;
+    }
+
+    // Role verification strictly via trusted Firebase Custom Claims
+    function isAdmin() {
+      return isSignedIn() && (
+        request.auth.token.admin == true ||
+        request.auth.token.role == 'admin'
+      );
+    }
+
+    function incoming() {
+      return request.resource.data;
+    }
+
+    function existing() {
+      return resource.data;
+    }
+
+    function isValidId(id) {
+      return id is string && id.size() > 0 && id.size() <= 128 && id.matches('^[a-zA-Z0-9_\\-]+$');
+    }
+
+    // Admins Registry: Read-only for authenticated users; writeable ONLY by server / Firebase Admin SDK
+    match /admins/{adminId} {
+      allow read: if isSignedIn();
+      allow write: if false;
+    }
+
+    // Users Collection: Strict field boundaries on create and update
+    match /users/{userId} {
+      allow get: if isOwner(userId) || isAdmin();
+      allow list: if isAdmin();
+      
+      // Strict hasOnly() boundary for profile registration: Default role must be 'user'
+      allow create: if isOwner(userId) &&
+        isValidId(userId) &&
+        incoming().keys().hasOnly([
+          'uid', 'email', 'displayName', 'photoURL', 'role', 
+          'language', 'theme', 'miningConsent', 'consentTimestamp', 
+          'consentVersion', 'referralCode', 'referredBy', 'createdAt', 'updatedAt'
+        ]) &&
+        incoming().keys().hasAll(['uid', 'email', 'role']) &&
+        incoming().uid == request.auth.uid &&
+        incoming().role == 'user';
+
+      // Updates restricted exclusively to personal settings: Financial & RBAC fields are locked
+      allow update: if isOwner(userId) &&
+        incoming().diff(existing()).affectedKeys().hasOnly([
+          'displayName', 'photoURL', 'language', 'theme', 
+          'miningConsent', 'consentTimestamp', 'consentVersion', 'updatedAt'
+        ]) &&
+        incoming().uid == existing().uid &&
+        incoming().role == existing().role;
+
+      allow delete: if false;
+    }
+
+    // Mining Sessions: Strict untrusted operational telemetry; all financial attributes and accepted shares prohibited
+    match /miningSessions/{sessionId} {
+      allow get: if isSignedIn() && (resource.data.userId == request.auth.uid || isAdmin());
+      allow list: if isSignedIn() && (resource.data.userId == request.auth.uid || isAdmin());
+      
+      allow create: if isSignedIn() &&
+        isValidId(sessionId) &&
+        incoming().keys().hasOnly([
+          'sessionId', 'userId', 'workerName', 'startTime', 'endTime', 
+          'hashrate', 'active', 'sharesSubmitted', 'status', 'createdAt'
+        ]) &&
+        incoming().keys().hasAll(['sessionId', 'userId', 'startTime', 'active']) &&
+        incoming().userId == request.auth.uid &&
+        incoming().active == true &&
+        // Prohibit injection of financial reward fields and authoritative shares from client
+        !incoming().keys().hasAny(['revenue', 'earnings', 'payout', 'confirmedBalance', 'rewardAmount', 'acceptedShares']);
+
+      allow update: if isSignedIn() &&
+        existing().userId == request.auth.uid &&
+        incoming().userId == existing().userId &&
+        incoming().diff(existing()).affectedKeys().hasOnly([
+          'endTime', 'active', 'hashrate', 'sharesSubmitted', 'status', 'updatedAt'
+        ]) &&
+        !incoming().diff(existing()).affectedKeys().hasAny(['revenue', 'earnings', 'payout', 'confirmedBalance', 'rewardAmount', 'acceptedShares', 'userId']);
+
+      allow delete: if false; // Audit retention
+    }
+
+    // Mining Workers: Heartbeat, device metadata and telemetry configuration (Untrusted telemetry registration)
+    match /miningWorkers/{workerId} {
+      allow get: if isSignedIn() && (resource == null || resource.data.userId == request.auth.uid || isAdmin());
+      allow list: if isSignedIn() && (resource.data.userId == request.auth.uid || isAdmin());
+      
+      allow create: if isSignedIn() &&
+        isValidId(workerId) &&
+        incoming().keys().hasOnly([
+          'workerId', 'userId', 'name', 'deviceName', 'status', 'hashrate', 
+          'reportedHashrate', 'lastSeen', 'threads', 'platform', 'cpuCores', 
+          'xmrigVersion', 'sessionId', 'lastError', 'createdAt', 'updatedAt', 'cpuUsage',
+          'installationId', 'installationLinkedAt', 'isArchived', 'archivedAt', 'archiveReason', 'mergedInto', 'mergedAt'
+        ]) &&
+        incoming().keys().hasAll(['workerId', 'userId', 'name']) &&
+        incoming().userId == request.auth.uid &&
+        !incoming().keys().hasAny(['balance', 'earnings', 'payout', 'revenue', 'confirmedBalance', 'rewardAmount', 'acceptedShares', 'rejectedShares', 'syncStatus', 'verified']);
+
+      allow update: if isSignedIn() &&
+        existing().userId == request.auth.uid &&
+        incoming().userId == existing().userId &&
+        (existing().workerId == null || incoming().workerId == existing().workerId) &&
+        incoming().diff(existing()).affectedKeys().hasOnly([
+          'name', 'deviceName', 'status', 'hashrate', 'reportedHashrate', 
+          'lastSeen', 'threads', 'platform', 'cpuCores', 'xmrigVersion', 
+          'sessionId', 'lastError', 'updatedAt', 'workerId', 'userId', 'createdAt', 'cpuUsage',
+          'installationId', 'installationLinkedAt', 'isArchived', 'archivedAt', 'archiveReason', 'mergedInto', 'mergedAt'
+        ]) &&
+        !incoming().diff(existing()).affectedKeys().hasAny(['balance', 'earnings', 'payout', 'revenue', 'confirmedBalance', 'rewardAmount', 'acceptedShares', 'rejectedShares', 'syncStatus', 'verified']);
+
+      allow delete: if isSignedIn() && existing().userId == request.auth.uid;
+    }
+
+    // Accepted Shares: Client cannot forge shares; confirmed exclusively by trusted backend pool daemon
+    match /acceptedShares/{shareId} {
+      allow get: if isSignedIn() && (resource.data.userId == request.auth.uid || isAdmin());
+      allow list: if isSignedIn() && (resource.data.userId == request.auth.uid || isAdmin());
+      allow write: if false;
+    }
+
+    // Mining Revenue: Sealed from all client writes; detailed platform revenue read is restricted strictly to Admins
+    match /miningRevenue/{revenueId} {
+      allow read: if isAdmin();
+      allow write: if false;
+    }
+
+    // User Earnings: Confirmed financial earnings; writeable only by trusted backend
+    match /userEarnings/{earningId} {
+      allow get: if isSignedIn() && (resource.data.userId == request.auth.uid || isAdmin());
+      allow list: if isSignedIn() && (resource.data.userId == request.auth.uid || isAdmin());
+      allow write: if false;
+    }
+
+    // Wallet Ledger: Immutable financial balance ledger; writeable only by trusted backend
+    match /walletLedger/{entryId} {
+      allow get: if isSignedIn() && (resource.data.userId == request.auth.uid || isAdmin());
+      allow list: if isSignedIn() && (resource.data.userId == request.auth.uid || isAdmin());
+      allow write: if false;
+    }
+
+    // Withdrawals: Sealed in Phase 1 against client forgery; backend daemon only
+    match /withdrawals/{withdrawalId} {
+      allow get: if isSignedIn() && (resource.data.userId == request.auth.uid || isAdmin());
+      allow list: if isSignedIn() && (resource.data.userId == request.auth.uid || isAdmin());
+      allow write: if false;
+    }
+
+    // Spinner Sessions: Sealed from browser writes; recorded exclusively by trusted backend Admin SDK
+    match /spinnerSessions/{sessionId} {
+      allow get: if isSignedIn() && (resource.data.userId == request.auth.uid || isAdmin());
+      allow list: if isSignedIn() && (resource.data.userId == request.auth.uid || isAdmin());
+      allow write: if false;
+    }
+
+    // Wheel Spins: Sealed from browser writes; recorded exclusively by trusted backend Admin SDK
+    match /wheelSpins/{spinId} {
+      allow get: if isSignedIn() && (resource.data.userId == request.auth.uid || isAdmin());
+      allow list: if isSignedIn() && (resource.data.userId == request.auth.uid || isAdmin());
+      allow write: if false;
+    }
+
+    // User Arcade Points: Entertainment points ledger completely separate from crypto; writeable only by backend
+    match /userArcade/{userId} {
+      allow get: if isOwner(userId) || isAdmin();
+      allow list: if isAdmin();
+      allow write: if false;
+    }
+
+    // Replay Nonces: Internal backend security collection; locked from all client access
+    match /usedNonces/{nonce} {
+      allow read, write: if false;
+    }
+
+    // Distributed Rate Limits: Internal backend security collection; locked from all client access
+    match /rateLimits/{userId} {
+      allow read, write: if false;
+    }
+
+    // Rewards: Distributed exclusively by backend
+    match /rewards/{rewardId} {
+      allow get: if isSignedIn() && (resource.data.userId == request.auth.uid || isAdmin());
+      allow list: if isSignedIn() && (resource.data.userId == request.auth.uid || isAdmin());
+      allow write: if false;
+    }
+
+    // Referrals: Relationship mapping
+    match /referrals/{referralId} {
+      allow get: if isSignedIn() && (
+        resource.data.referrerId == request.auth.uid || 
+        resource.data.referredUserId == request.auth.uid || 
+        isAdmin()
+      );
+      allow list: if isSignedIn() && (
+        resource.data.referrerId == request.auth.uid || 
+        resource.data.referredUserId == request.auth.uid || 
+        isAdmin()
+      );
+      allow create: if isSignedIn() && 
+        incoming().referredUserId == request.auth.uid &&
+        incoming().keys().hasOnly(['referralId', 'referrerId', 'referredUserId', 'code', 'status', 'createdAt']) &&
+        incoming().keys().hasAll(['referrerId', 'referredUserId', 'code']) &&
+        !incoming().keys().hasAny(['bonusPaid', 'commission', 'balance', 'payout']);
+
+      allow update, delete: if false;
+    }
+
+    // System Settings: Public read for clients, written exclusively via backend configuration
+    match /systemSettings/{settingId} {
+      allow read: if isSignedIn();
+      allow write: if false;
+    }
+
+    // Audit Logs: Strict integrity; clients cannot insert or tamper with logs
+    match /auditLogs/{logId} {
+      allow read: if isAdmin();
+      allow write: if false;
+    }
+  }
+}

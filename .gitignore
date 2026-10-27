@@ -1,0 +1,12 @@
+node_modules/
+build/
+dist/
+coverage/
+.DS_Store
+*.log
+.env*
+!.env.example
+.mining_temp/
+dev-dist/
+dist-electron/
+dist-windows/

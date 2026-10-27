@@ -1,0 +1,17 @@
+{
+  "$schema": "node_modules/wrangler/config-schema.json",
+  "name": "spinnermine-backend",
+  "main": "src/index.ts",
+  "compatibility_date": "2025-02-01",
+  "compatibility_flags": ["nodejs_compat"],
+  "vars": {
+    "FIREBASE_PROJECT_ID": "spinnermine-cloud-production",
+    "FIRESTORE_DATABASE_ID": "(default)",
+    "ENVIRONMENT": "production",
+    "ALLOW_LOCALHOST_ORIGIN": "true",
+    "BACKEND_VERSION": "1.0.4"
+  },
+  "observability": {
+    "enabled": true
+  }
+}
