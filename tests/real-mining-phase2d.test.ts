@@ -339,12 +339,14 @@ describe('SpinnerMine Cloud Phase 2D — Real Mining & Stratum Acceptance Suite'
     let mockPort: number;
 
     beforeAll(async () => {
-      mockServer = new MockStratumServer({ port: 14444 });
+      mockServer = new MockStratumServer({ port: 0 });
       mockPort = await mockServer.start();
     });
 
     afterAll(async () => {
-      await mockServer.stop();
+      if (mockServer) {
+        await mockServer.stop();
+      }
     });
 
     it('verifies 7-step Stratum success: DNS -> TCP -> Login -> Auth -> Job -> Submit -> Accepted', async () => {
@@ -380,7 +382,7 @@ describe('SpinnerMine Cloud Phase 2D — Real Mining & Stratum Acceptance Suite'
     });
 
     it('Gate 10: Stratum Login Failure is detected when pool rejects credentials', async () => {
-      const rejectingServer = new MockStratumServer({ port: 14445, rejectLogin: true });
+      const rejectingServer = new MockStratumServer({ port: 0, rejectLogin: true });
       const port = await rejectingServer.start();
 
       try {
@@ -401,7 +403,7 @@ describe('SpinnerMine Cloud Phase 2D — Real Mining & Stratum Acceptance Suite'
     });
 
     it('detects and distinguishes rejected shares from accepted shares', async () => {
-      const rejectingShareServer = new MockStratumServer({ port: 14446, rejectShares: true });
+      const rejectingShareServer = new MockStratumServer({ port: 0, rejectShares: true });
       const port = await rejectingShareServer.start();
 
       try {
@@ -429,43 +431,45 @@ describe('SpinnerMine Cloud Phase 2D — Real Mining & Stratum Acceptance Suite'
   // ---------------------------------------------------------------------------
   describe('Gate 11: Pool Reconnection & Timeout Resilience', () => {
     it('handles pool disconnect and subsequent reconnect without crashing', async () => {
-      const dynamicServer = new MockStratumServer({ port: 14447 });
-      const port = await dynamicServer.start();
+      const dynamicServer = new MockStratumServer({ port: 0 });
+      let port = await dynamicServer.start();
 
-      // Connect once
-      const report1 = await StratumVerifier.verifyPool({
-        host: '127.0.0.1',
-        port,
-        walletAddress: VALID_XMR_WALLET,
-        timeoutMs: 1000
-      });
-      expect(report1.overallSuccess).toBe(true);
+      try {
+        // Connect once
+        const report1 = await StratumVerifier.verifyPool({
+          host: '127.0.0.1',
+          port,
+          walletAddress: VALID_XMR_WALLET,
+          timeoutMs: 1000
+        });
+        expect(report1.overallSuccess).toBe(true);
 
-      // Stop server
-      await dynamicServer.stop();
+        // Stop server
+        await dynamicServer.stop();
 
-      // Second connection attempt fails gracefully with timeout / error
-      const report2 = await StratumVerifier.verifyPool({
-        host: '127.0.0.1',
-        port,
-        walletAddress: VALID_XMR_WALLET,
-        timeoutMs: 500
-      });
-      expect(report2.overallSuccess).toBe(false);
+        // Second connection attempt fails gracefully with timeout / error
+        const report2 = await StratumVerifier.verifyPool({
+          host: '127.0.0.1',
+          port,
+          walletAddress: VALID_XMR_WALLET,
+          timeoutMs: 500
+        });
+        expect(report2.overallSuccess).toBe(false);
 
-      // Restart server
-      await dynamicServer.start();
+        // Restart server
+        port = await dynamicServer.start();
 
-      // Third connection attempt recovers cleanly
-      const report3 = await StratumVerifier.verifyPool({
-        host: '127.0.0.1',
-        port,
-        walletAddress: VALID_XMR_WALLET,
-        timeoutMs: 1000
-      });
-      expect(report3.overallSuccess).toBe(true);
-
-      await dynamicServer.stop();
+        // Third connection attempt recovers cleanly
+        const report3 = await StratumVerifier.verifyPool({
+          host: '127.0.0.1',
+          port,
+          walletAddress: VALID_XMR_WALLET,
+          timeoutMs: 1000
+        });
+        expect(report3.overallSuccess).toBe(true);
+      } finally {
+        await dynamicServer.stop();
+      }
     });
   });
 

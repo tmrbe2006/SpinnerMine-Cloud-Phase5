@@ -15,7 +15,7 @@ describe('Phase 2A: Real Mining Engine & Windows XMRig Integration Tests', () =>
 
   beforeAll(async () => {
     // Start local Stratum mock server for real socket tests
-    mockStratum = new MockStratumServer();
+    mockStratum = new MockStratumServer({ port: 0 });
     mockStratumPort = await mockStratum.start();
 
     // Create a temporary mock binary file to test SHA-256 calculation

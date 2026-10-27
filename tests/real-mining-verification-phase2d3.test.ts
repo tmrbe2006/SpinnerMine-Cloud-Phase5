@@ -28,12 +28,14 @@ describe('SpinnerMine Cloud Phase 2D.3 — Real Mining Verification Suite', () =
   let mockPort: number;
 
   beforeAll(async () => {
-    mockStratum = new MockStratumServer();
+    mockStratum = new MockStratumServer({ port: 0 });
     mockPort = await mockStratum.start();
   });
 
   afterAll(async () => {
-    await mockStratum.stop();
+    if (mockStratum) {
+      await mockStratum.stop();
+    }
   });
 
   // ---------------------------------------------------------------------------

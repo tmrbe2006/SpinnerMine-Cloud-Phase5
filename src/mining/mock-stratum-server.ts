@@ -37,7 +37,8 @@ export class MockStratumServer {
 
   constructor(options: MockStratumServerOptions = {}) {
     this.options = options;
-    this.port = options.port || 13333;
+    // Default to port 0 (OS allocates dynamic ephemeral port) to prevent EADDRINUSE collisions during parallel test runs
+    this.port = options.port !== undefined ? options.port : 0;
   }
 
   public async start(): Promise<number> {
@@ -81,7 +82,9 @@ export class MockStratumServer {
       this.server.listen(this.port, '127.0.0.1', () => {
         this.isRunning = true;
         const addr = this.server?.address() as net.AddressInfo;
-        this.port = addr.port;
+        if (addr && typeof addr === 'object' && addr.port) {
+          this.port = addr.port;
+        }
         resolve(this.port);
       });
     });
@@ -89,6 +92,16 @@ export class MockStratumServer {
 
   public async stop(): Promise<void> {
     return new Promise((resolve) => {
+      let resolved = false;
+      const done = () => {
+        if (!resolved) {
+          resolved = true;
+          this.isRunning = false;
+          this.server = null;
+          resolve();
+        }
+      };
+
       for (const socket of this.activeSockets) {
         try {
           socket.destroy();
@@ -97,13 +110,18 @@ export class MockStratumServer {
       this.activeSockets.clear();
 
       if (this.server && this.isRunning) {
-        this.server.close(() => {
-          this.isRunning = false;
-          resolve();
-        });
+        const timer = setTimeout(done, 1500);
+        try {
+          this.server.close(() => {
+            clearTimeout(timer);
+            done();
+          });
+        } catch {
+          clearTimeout(timer);
+          done();
+        }
       } else {
-        this.isRunning = false;
-        resolve();
+        done();
       }
     });
   }

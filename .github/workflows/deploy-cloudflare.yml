@@ -32,6 +32,37 @@ jobs:
         run: |
           npm test
 
+      - name: Validate Cloudflare Deployment Secrets Preflight
+        shell: bash
+        env:
+          HAS_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN != '' }}
+          HAS_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID != '' }}
+        run: |
+          echo "=========================================================="
+          echo "SpinnerMine Cloud — Cloudflare Deploy Preflight Check"
+          echo "=========================================================="
+          echo "Checking deployment credential presence in GitHub Secrets:"
+          echo "  - CLOUDFLARE_API_TOKEN: $HAS_API_TOKEN"
+          echo "  - CLOUDFLARE_ACCOUNT_ID: $HAS_ACCOUNT_ID"
+          echo "=========================================================="
+
+          if [ "$HAS_API_TOKEN" != "true" ] || [ "$HAS_ACCOUNT_ID" != "true" ]; then
+            echo "::error::Cloudflare deployment credentials are missing in GitHub Actions Secrets."
+            echo "Required Secrets:"
+            if [ "$HAS_API_TOKEN" != "true" ]; then
+              echo "  - Missing secret: CLOUDFLARE_API_TOKEN"
+            fi
+            if [ "$HAS_ACCOUNT_ID" != "true" ]; then
+              echo "  - Missing secret: CLOUDFLARE_ACCOUNT_ID"
+            fi
+            echo ""
+            echo "Deployment halted: Cannot mutate production Cloudflare Worker without authentication."
+            echo "Configure CLOUDFLARE_API_TOKEN and CLOUDFLARE_ACCOUNT_ID in repository secrets to enable deployments."
+            exit 1
+          fi
+
+          echo "✓ All deployment credentials verified present. Proceeding with wrangler deploy."
+
       - name: Deploy to Cloudflare Workers
         working-directory: workers
         env:
